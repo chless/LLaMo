@@ -35,7 +35,7 @@ pip install -r requirements.txt
 
 ## Preparation
 ### Pretrained graph encoder
-We utilized the pre-trained graph encoder checkpoint from the [link](https://github.com/chao1224/MoleculeSTM?tab=readme-ov-file) repository. 
+We utilized the pre-trained graph encoder checkpoint from the [MoleculeSTM](https://github.com/chao1224/MoleculeSTM?tab=readme-ov-file) repository. 
 You can download the pre-trained graph encoder checkpoint from the [link](https://drive.google.com/file/d/1oXb3BoDUZPwRiTYJSdTJRUwMLxWT8NTm/view?usp=sharing).
 Place the pretrained graph model in the `MoleculeSTM/' folder.
 
