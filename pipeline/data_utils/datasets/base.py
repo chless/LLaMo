@@ -6,6 +6,9 @@ from torch_geometric.data import InMemoryDataset
 from pipeline.data_utils.constants import SYSTEM_MESSAGE, HUMAN, AI, MEDIA_TOKENS
 from typing import List
 
+from rdkit import Chem
+
+
 import torch
 import utils
 
@@ -51,10 +54,12 @@ class BaseDataset(InMemoryDataset):
 
         instruction = data.instruction
         
+        mol = Chem.MolFromSmiles(data.smiles)
+        canonical_smiles = Chem.MolToSmiles(mol, isomericSmiles=False, canonical=True)
         if not self.smiles_prompt:
-            smiles_input = data.smiles
+            smiles_input = canonical_smiles
         else:
-            smiles_input = self.smiles_prompt.format(data.smiles)
+            smiles_input = self.smiles_prompt.format(canonical_smiles)
                 
         
         graph_input = MEDIA_TOKENS["graph"][0]
@@ -95,11 +100,14 @@ class BaseDataset(InMemoryDataset):
             text, self.max_length
         )
         
+        mol = Chem.MolFromSmiles(data.smiles)
+        canonical_smiles = Chem.MolToSmiles(mol, isomericSmiles=False, canonical=True)
+        
         return {
             "graph": data,
             "raw_text": text,
             "text": text_input,
-            "smiles": data.smiles
+            "smiles": canonical_smiles
         }
     
     def __getitem__(self, index):

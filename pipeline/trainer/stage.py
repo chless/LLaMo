@@ -353,7 +353,7 @@ class LLaMoStage(pl.LightningModule):
         # parser.add_argument('--prompt', type=str, default='a molecule of ')
         parser.add_argument('--num_beams', type=int, default=1)
         parser.add_argument('--do_sample', action='store_true', default=False)
-        parser.add_argument('--max_len', type=int, default=128)
+        parser.add_argument('--max_len', type=int, default=512)
         parser.add_argument('--min_len', type=int, default=8)
         parser.add_argument('--length_penalty', type=float, default=1.0)
         

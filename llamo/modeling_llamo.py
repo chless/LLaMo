@@ -232,8 +232,7 @@ class LLaMoForConditionalGeneration(GraphPreTrainedModel):
 
         self.generation_config = GenerationConfig(
             max_length=512,
-            do_sample=False,
-            top_k=3,
+            do_sample=True,
             pad_token_id=0,
             unk_token_id=0,
             bos_token_id=1,

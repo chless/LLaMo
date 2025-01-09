@@ -1,3 +1,8 @@
+"""
+This code is based on ReLMole.
+ReLMole: Molecular Representation Learning based on Two-Level Graph Similarities
+https://pubs.acs.org/doi/10.1021/acs.jcim.2c00798
+"""
 import numpy as np
 from scipy.sparse import csr_matrix
 import networkx as nx
@@ -5,7 +10,8 @@ from rdkit import Chem
 from collections import defaultdict
 import torch
 
-
+from rdkit import RDLogger
+RDLogger.DisableLog('rdApp.*')
 # feature dim
 ATOM_DIM = 101
 BOND_DIM = 11

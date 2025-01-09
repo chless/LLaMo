@@ -149,8 +149,8 @@ class MultilevelProjector(nn.Module):
                 add_x = temp_x.unsqueeze(0)
             else:
                 add_x = torch.cat((add_x, temp_x.unsqueeze(0)))
-            
-        x = torch.cat((x, add_x), dim=1)
+            x = torch.cat((add_x, x), dim=1)
+
         x = self.layer_norm(x)
         query_tokens = self._forward(x)  # (B, L, output_hidden_size)
 
