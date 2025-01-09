@@ -63,6 +63,20 @@ python train.py --root_train 'data/MoleculeDesc/' --root_eval 'data/MoleculeDesc
 python train.py --root_train 'data/instruction_tuning/' --root_eval 'data/MoleculeDesc/' --devices '0,1,2,3' --filename "stage2" --max_epochs 3 --mode train --inference_batch_size 16 --batch_size 4 --config_file config_file/stage2.yaml --accumulate_grad_batches 4 --stage_path "./all_checkpoints/stage1/last.ckpt"
 ```
 
+## Inference and Evaluation
+
+### Inference
+If you want to generate the output of the LLaMo on the molecule description generation task, you can run the following command.
+```bash
+python train.py --root_train 'data/MoleculeDesc/' --root_eval 'data/MoleculeDesc/' --devices '0,1,2,3' --filename "desc_output" --mode eval --inference_batch_size 1 --batch_size 1 --config_file config_file/stage2.yaml --stage_path <path_to_checkpoint>
+```
+
+### Evaluation
+If you want to evaluate the performance of the LLaMo on the molecule description generation task, you can run the following command.
+```bash
+python evaluate.py --task desc --path <path_to_predictions>
+```
+
 
 ## Contact
 If you have any questions, please create an issue on this repository or contact at lpmn678@korea.ac.kr.
