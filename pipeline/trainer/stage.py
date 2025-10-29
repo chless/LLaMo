@@ -252,48 +252,35 @@ class LLaMoStage(pl.LightningModule):
     @torch.no_grad()
     def validation_step(self, batch, batch_idx, dataloader_idx):
         self.mllm.eval()
-        if dataloader_idx == 0:
-            # batch_size = batch['input_ids'].shape[0]
-            # outputs = self.mllm(**batch)
-            # loss = outputs.loss
-            # ###============== Overall Loss ===================###
-            # self.log("val molecule loss", float(loss), batch_size=batch_size, sync_dist=True)
-            # self.new_idx +=1
-            return 0.0
-        elif dataloader_idx == 1:
-            if (self.current_epoch+1) % self.caption_eval_epoch != 0:
-                return 
-            graph_values = batch['graph_values']
-            input_ids = batch['input_ids']
-            smiles = batch['smiles']
-            attention_mask = batch['attention_mask']
-            label = batch['labels']
 
-            ###============== Captioning Results ===================###
-            prediction_ids = self.mllm.generate(
-                graph_values=graph_values,
-                input_ids=input_ids,
-                smiles=smiles,
-                attention_mask=attention_mask, 
-                do_sample=self.do_sample,
-                num_beams=self.num_beams,
-                max_new_tokens=self.max_len,
-                min_length=self.min_len,
-                length_penalty=self.length_penalty
-            )
+        graph_values = batch['graph_values']
+        input_ids = batch['input_ids']
+        smiles = batch['smiles']
+        attention_mask = batch['attention_mask']
+        label = batch['labels']
 
-            predictions = self.tokenizer.batch_decode(prediction_ids, skip_special_tokens=True)
-            predictions = [pred.strip() for pred in predictions]
+        ###============== Captioning Results ===================###
+        prediction_ids = self.mllm.generate(
+            graph_values=graph_values,
+            input_ids=input_ids,
+            smiles=smiles,
+            attention_mask=attention_mask, 
+            do_sample=self.do_sample,
+            num_beams=self.num_beams,
+            max_new_tokens=self.max_len,
+            min_length=self.min_len,
+            length_penalty=self.length_penalty
+        )
 
-            texts = self.tokenizer.batch_decode(label, skip_special_tokens=True)
-            texts = [txt.strip() for txt in texts]
+        predictions = self.tokenizer.batch_decode(prediction_ids, skip_special_tokens=True)
+        predictions = [pred.strip() for pred in predictions]
 
-            
-            self.list_predictions.append(predictions)
-            self.list_targets.append(texts)
+        texts = self.tokenizer.batch_decode(label, skip_special_tokens=True)
+        texts = [txt.strip() for txt in texts]
 
-        else:
-            raise NotImplementedError
+        self.list_predictions.append(predictions)
+        self.list_targets.append(texts)
+
     
     def on_validation_epoch_start(self) -> None:
         self.list_predictions = []
@@ -323,6 +310,7 @@ class LLaMoStage(pl.LightningModule):
             all_targets = [i for ii in all_targets for i in ii]
             self.save_predictions(all_predictions, all_targets)
             ## fixme: I am not sure if the max length is the same as previous experiments
+            '''
             bleu2, bleu4, rouge_1, rouge_2, rouge_l, meteor_score = \
                 caption_evaluate(all_predictions, all_targets, self.tokenizer, self.max_len * 2) 
             self.log("bleu2", bleu2, sync_dist=False)
@@ -331,6 +319,7 @@ class LLaMoStage(pl.LightningModule):
             self.log("rouge_2", rouge_2, sync_dist=False)
             self.log("rouge_l", rouge_l, sync_dist=False)
             self.log("meteor_score", meteor_score, sync_dist=False)
+            '''
         
 
     def training_step(self, batch, batch_idx):
