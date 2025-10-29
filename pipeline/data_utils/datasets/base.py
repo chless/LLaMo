@@ -77,7 +77,10 @@ class BaseDataset(InMemoryDataset):
             
         elif isinstance(instruction, str):
             if graph_input not in instruction:
-                aug_instruction = smiles_input[:128] + graph_input + " " + instruction
+                if "<INPUT>" in instruction:
+                    aug_instruction = instruction.replace("<INPUT>", smiles_input[:128] + graph_input)
+                else:
+                    aug_instruction = smiles_input[:128] + graph_input + " " + instruction
             else:
                 aug_instruction = smiles_input[:128] + " " + instruction
             temp_text.append({"role":"user", "content": aug_instruction})
