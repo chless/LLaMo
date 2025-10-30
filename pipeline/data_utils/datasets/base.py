@@ -106,12 +106,15 @@ class BaseDataset(InMemoryDataset):
         mol = Chem.MolFromSmiles(data.smiles)
         canonical_smiles = Chem.MolToSmiles(mol, isomericSmiles=False, canonical=True)
         
-        return {
+        output = {
             "graph": data,
             "raw_text": text,
             "text": text_input,
             "smiles": canonical_smiles
-        }
+        }   
+        if 'task' in data.keys() and data['task'] is not None:
+            output['task'] = data['task']
+        return output
     
     def __getitem__(self, index):
         data = self.get(index)

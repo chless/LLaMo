@@ -65,4 +65,8 @@ def batchify(batch, tokenizer, max_length: int, use_trunc=True, is_eval=False):
     # output_batch = {k: v.to("cuda") for k, v in output_batch.items()}
     output_batch.update({"smiles": smiles_list})
 
+    if 'task' in batch[0].keys() and batch[0]['task'] is not None:
+        task_list = [data['task'] for data in batch]
+        output_batch.update({"task": task_list})
+
     return output_batch

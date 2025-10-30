@@ -175,44 +175,39 @@ class LLaMoStage(pl.LightningModule):
     def on_test_epoch_start(self) -> None:
         self.list_predictions = []
         self.list_targets = []
-        
+        self.list_tasks = []
     def on_test_epoch_end(self):
         list_predictions = self.list_predictions
         list_targets = self.list_targets
-
+        list_tasks = self.list_tasks
         predictions = [i for ii in list_predictions for i in ii]
         targets = [i for ii in list_targets for i in ii]
-
-        all_predictions = [None for _ in range(self.trainer.world_size)]
-        all_targets = [None for _ in range(self.trainer.world_size)]
-        
-        try:
-            dist.all_gather_object(all_predictions, predictions)
-            dist.all_gather_object(all_targets, targets)
-        except RuntimeError:
+        tasks = [i for ii in list_tasks for i in ii]
+        if self.trainer.world_size > 1:
             all_predictions = [predictions]
             all_targets = [targets]
-            
-        if self.global_rank == 0:
-            all_predictions = [i for ii in all_predictions for i in ii]
-            all_targets = [i for ii in all_targets for i in ii]
-            self.save_predictions(all_predictions, all_targets)
-            ## fixme: I am not sure if the max length is the same as previous experiments
-            bleu2, bleu4, rouge_1, rouge_2, rouge_l, meteor_score = \
-                caption_evaluate(all_predictions, all_targets, self.tokenizer, self.max_len * 2) 
-            self.log("bleu2", bleu2, sync_dist=False)
-            self.log("bleu4", bleu4, sync_dist=False)
-            self.log("rouge_1", rouge_1, sync_dist=False)
-            self.log("rouge_2", rouge_2, sync_dist=False)
-            self.log("rouge_l", rouge_l, sync_dist=False)
-            self.log("meteor_score", meteor_score, sync_dist=False)
+            all_tasks = [tasks]
+        else:
+            all_predictions = predictions
+            all_targets = targets
+            all_tasks = tasks
+        save_dict = {
+            'predictions': all_predictions,
+            'targets': all_targets,
+            'tasks': all_tasks
+        }
+        self.save_predictions(**save_dict)
 
-    def save_predictions(self, predictions, targets):
-        assert len(predictions) == len(targets)
-        with open(os.path.join(self.logger.log_dir, 'predictions.txt'), 'w', encoding='utf8') as f:
-            for p, t in zip(predictions, targets):
-                line = {'prediction': p, 'target': t}
-                f.write(json.dumps(line, ensure_ascii=True) + '\n')
+
+    def save_predictions(self, **kwargs):
+        keys = list(kwargs.keys())
+        len_dump = len(kwargs[keys[0]])
+        for k in keys:
+            assert len(kwargs[k]) == len_dump
+        with open(os.path.join(self.logger.log_dir, 'dumps.jsonl'), 'w', encoding='utf8') as f:
+            for i in range(len_dump):
+                line = {k: kwargs[k][i] for k in keys}
+                f.write(json.dumps(line, ensure_ascii=True, indent=4) + '\n')
 
     @torch.no_grad()
     def test_step(self, batch, batch_idx):
@@ -246,6 +241,9 @@ class LLaMoStage(pl.LightningModule):
 
         self.list_predictions.append(predictions)
         self.list_targets.append(texts)
+
+        if 'task' in batch.keys() and batch['task'] is not None:
+            self.list_tasks.append(batch['task'])
 
         return (predictions, texts)
 
@@ -281,10 +279,15 @@ class LLaMoStage(pl.LightningModule):
         self.list_predictions.append(predictions)
         self.list_targets.append(texts)
 
+        if 'task' in batch.keys() and batch['task'] is not None:
+            self.list_tasks.append(batch['task'])
+
+
     
     def on_validation_epoch_start(self) -> None:
         self.list_predictions = []
         self.list_targets = []
+        self.list_tasks = []
     
     def on_validation_epoch_end(self) -> None:
     # def validation_epoch_end(self, outputs):
@@ -294,33 +297,24 @@ class LLaMoStage(pl.LightningModule):
         # list_predictions, list_targets = zip(*caption_outputs)
         list_predictions = self.list_predictions
         list_targets = self.list_targets
+        list_tasks = self.list_tasks
         predictions = [i for ii in list_predictions for i in ii]
         targets = [i for ii in list_targets for i in ii]
-        all_predictions = [None for _ in range(self.trainer.world_size)]
-        all_targets = [None for _ in range(self.trainer.world_size)]
-        try:
-            dist.all_gather_object(all_predictions, predictions)
-            dist.all_gather_object(all_targets, targets)
-        except RuntimeError:
+        tasks = [i for ii in list_tasks for i in ii]
+        if self.trainer.world_size > 1:
             all_predictions = [predictions]
             all_targets = [targets]
-
-        if self.global_rank == 0:
-            all_predictions = [i for ii in all_predictions for i in ii]
-            all_targets = [i for ii in all_targets for i in ii]
-            self.save_predictions(all_predictions, all_targets)
-            ## fixme: I am not sure if the max length is the same as previous experiments
-            '''
-            bleu2, bleu4, rouge_1, rouge_2, rouge_l, meteor_score = \
-                caption_evaluate(all_predictions, all_targets, self.tokenizer, self.max_len * 2) 
-            self.log("bleu2", bleu2, sync_dist=False)
-            self.log("bleu4", bleu4, sync_dist=False)
-            self.log("rouge_1", rouge_1, sync_dist=False)
-            self.log("rouge_2", rouge_2, sync_dist=False)
-            self.log("rouge_l", rouge_l, sync_dist=False)
-            self.log("meteor_score", meteor_score, sync_dist=False)
-            '''
-        
+            all_tasks = [tasks]
+        else:
+            all_predictions = predictions
+            all_targets = targets
+            all_tasks = tasks
+            save_dict = {
+                'predictions': all_predictions,
+                'targets': all_targets,
+                'tasks': all_tasks
+            }
+            self.save_predictions(**save_dict)
 
     def training_step(self, batch, batch_idx):
         if self.scheduler:
