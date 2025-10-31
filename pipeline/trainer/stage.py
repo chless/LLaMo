@@ -230,10 +230,10 @@ class LLaMoStage(pl.LightningModule):
         input_ids = torch.where(input_ids < 0, 0, input_ids)
         input_texts = self.tokenizer.batch_decode(input_ids, skip_special_tokens=True)
         save_dict = {
-            'predictions': predictions,
-            'targets': texts,
             'tasks': batch['task'],
-            'input_texts': input_texts
+            'input_texts': input_texts,
+            'targets': texts,
+            'predictions': predictions,
         }
         self.save_predictions(**save_dict)
 
@@ -277,10 +277,10 @@ class LLaMoStage(pl.LightningModule):
         input_ids = torch.where(input_ids < 0, 0, input_ids)
         input_texts = self.tokenizer.batch_decode(input_ids, skip_special_tokens=True)
         save_dict = {
-            'predictions': predictions,
-            'targets': texts,
             'tasks': batch['task'],
-            'input_texts': input_texts
+            'input_texts': input_texts,
+            'targets': texts,
+            'predictions': predictions,
         }
         self.save_predictions(**save_dict)
 
