@@ -226,10 +226,14 @@ class LLaMoStage(pl.LightningModule):
         if 'task' in batch.keys() and batch['task'] is not None:
             self.list_tasks.append(batch['task'])
 
+        input_ids = batch['input_ids']
+        input_ids = torch.where(input_ids < 0, 0, input_ids)
+        input_texts = self.tokenizer.batch_decode(input_ids, skip_special_tokens=True)
         save_dict = {
             'predictions': predictions,
             'targets': texts,
-            'tasks': batch['task']
+            'tasks': batch['task'],
+            'input_texts': input_texts
         }
         self.save_predictions(**save_dict)
 
@@ -269,10 +273,14 @@ class LLaMoStage(pl.LightningModule):
 
         if 'task' in batch.keys() and batch['task'] is not None:
             self.list_tasks.append(batch['task'])
+        input_ids = batch['input_ids']
+        input_ids = torch.where(input_ids < 0, 0, input_ids)
+        input_texts = self.tokenizer.batch_decode(input_ids, skip_special_tokens=True)
         save_dict = {
             'predictions': predictions,
             'targets': texts,
-            'tasks': batch['task']
+            'tasks': batch['task'],
+            'input_texts': input_texts
         }
         self.save_predictions(**save_dict)
 
