@@ -185,10 +185,23 @@ class LLaMoStage(pl.LightningModule):
         len_dump = len(kwargs[keys[0]])
         for k in keys:
             assert len(kwargs[k]) == len_dump
-        with open(os.path.join(self.logger.log_dir, f'dumps_rank_{rank}.jsonl'), 'w', encoding='utf8') as f:
-            for i in range(len_dump):
-                line = {k: kwargs[k][i] for k in keys}
-                f.write(json.dumps(line, ensure_ascii=True, indent=4) + '\n')
+
+        filepath = os.path.join(self.logger.log_dir, f'dumps_rank_{rank}.json')
+        # load the previous dumps from filepath
+        if os.path.exists(filepath):
+            # read jsonl file
+            with open(filepath, 'r', encoding='utf8') as f:
+                cumulative_dumps = json.load(f)
+        else:
+            cumulative_dumps = []
+
+        for i in range(len_dump):
+            line = {k: kwargs[k][i] for k in keys}
+            cumulative_dumps.append(line)
+
+        with open(filepath, 'w', encoding='utf8') as f:
+            # save json file
+            json.dump(cumulative_dumps, f, ensure_ascii=True, indent=4)
 
     @torch.no_grad()
     def test_step(self, batch, batch_idx):
@@ -240,7 +253,7 @@ class LLaMoStage(pl.LightningModule):
         return (predictions, texts)
 
     @torch.no_grad()
-    def validation_step(self, batch, batch_idx, dataloader_idx):
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
         self.mllm.eval()
 
         graph_values = batch['graph_values']
