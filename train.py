@@ -118,6 +118,7 @@ def get_args():
     #######
     parser.add_argument('--project', type=str, default='linear')
     parser.add_argument('--mlp_depth', type=int, default=2)
+    parser.add_argument('--gnn_path', type=str, default='/data/chanhui-lee/LLaMo/molecule_model.pth')
     
     
     

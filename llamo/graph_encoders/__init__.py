@@ -16,7 +16,7 @@ def build_encoder(config):
     graph_encoder = GNN_graphpred(
         emb_dim=config.hidden_size,
         molecule_node_model=molecule_node_model,
-        init_checkpoint="/nas/chanhui-lee/LLaMo/molecule_model.pth",
+        init_checkpoint=config.gnn_path,
         cat_grep=cat_grep
     )
     ln_graph = LayerNorm(graph_encoder.num_features)

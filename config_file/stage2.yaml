@@ -14,7 +14,6 @@ graph_config:
   gin_num_layers: 5
   hidden_size: 300
   gin_drop_ratio: 0.0
-  pretrained_graph_name_or_path: "gin_pretrained/graphcl_80.pth"
 lm_config:
   pretrained_lm_name_or_path: "meta-llama/Llama-2-7b-chat-hf"
   pretrained_tokenizer_name_or_path: "meta-llama/Llama-2-7b-chat-hf"

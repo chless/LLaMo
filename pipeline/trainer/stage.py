@@ -125,7 +125,8 @@ class LLaMoStage(pl.LightningModule):
         self.min_len = args.min_len
         self.llm_tune = args.llm_tune
         self.length_penalty= args.length_penalty
-        
+        self.gnn_path = args.gnn_path
+        config.graph_config.gnn_path = self.gnn_path
         self.new_idx = 0
 
         self.mllm = LLaMoForConditionalGeneration(config)
