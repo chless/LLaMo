@@ -177,35 +177,15 @@ class LLaMoStage(pl.LightningModule):
         self.list_predictions = []
         self.list_targets = []
         self.list_tasks = []
-    def on_test_epoch_end(self):
-        list_predictions = self.list_predictions
-        list_targets = self.list_targets
-        list_tasks = self.list_tasks
-        predictions = [i for ii in list_predictions for i in ii]
-        targets = [i for ii in list_targets for i in ii]
-        tasks = [i for ii in list_tasks for i in ii]
-        if self.trainer.world_size > 1:
-            all_predictions = [predictions]
-            all_targets = [targets]
-            all_tasks = [tasks]
-        else:
-            all_predictions = predictions
-            all_targets = targets
-            all_tasks = tasks
-        save_dict = {
-            'predictions': all_predictions,
-            'targets': all_targets,
-            'tasks': all_tasks
-        }
-        self.save_predictions(**save_dict)
 
 
     def save_predictions(self, **kwargs):
+        rank = dist.get_rank() if dist.is_initialized() else 0
         keys = list(kwargs.keys())
         len_dump = len(kwargs[keys[0]])
         for k in keys:
             assert len(kwargs[k]) == len_dump
-        with open(os.path.join(self.logger.log_dir, 'dumps.jsonl'), 'w', encoding='utf8') as f:
+        with open(os.path.join(self.logger.log_dir, f'dumps_rank_{rank}.jsonl'), 'w', encoding='utf8') as f:
             for i in range(len_dump):
                 line = {k: kwargs[k][i] for k in keys}
                 f.write(json.dumps(line, ensure_ascii=True, indent=4) + '\n')
@@ -246,6 +226,13 @@ class LLaMoStage(pl.LightningModule):
         if 'task' in batch.keys() and batch['task'] is not None:
             self.list_tasks.append(batch['task'])
 
+        save_dict = {
+            'predictions': predictions,
+            'targets': texts,
+            'tasks': batch['task']
+        }
+        self.save_predictions(**save_dict)
+
         return (predictions, texts)
 
     @torch.no_grad()
@@ -282,6 +269,12 @@ class LLaMoStage(pl.LightningModule):
 
         if 'task' in batch.keys() and batch['task'] is not None:
             self.list_tasks.append(batch['task'])
+        save_dict = {
+            'predictions': predictions,
+            'targets': texts,
+            'tasks': batch['task']
+        }
+        self.save_predictions(**save_dict)
 
 
     
@@ -289,33 +282,6 @@ class LLaMoStage(pl.LightningModule):
         self.list_predictions = []
         self.list_targets = []
         self.list_tasks = []
-    
-    def on_validation_epoch_end(self) -> None:
-    # def validation_epoch_end(self, outputs):
-        if (self.current_epoch+1) % self.caption_eval_epoch != 0:
-            return 
-        # caption_outputs = outputs[1]
-        # list_predictions, list_targets = zip(*caption_outputs)
-        list_predictions = self.list_predictions
-        list_targets = self.list_targets
-        list_tasks = self.list_tasks
-        predictions = [i for ii in list_predictions for i in ii]
-        targets = [i for ii in list_targets for i in ii]
-        tasks = [i for ii in list_tasks for i in ii]
-        if self.trainer.world_size > 1:
-            all_predictions = [predictions]
-            all_targets = [targets]
-            all_tasks = [tasks]
-        else:
-            all_predictions = predictions
-            all_targets = targets
-            all_tasks = tasks
-            save_dict = {
-                'predictions': all_predictions,
-                'targets': all_targets,
-                'tasks': all_tasks
-            }
-            self.save_predictions(**save_dict)
 
     def training_step(self, batch, batch_idx):
         if self.scheduler:
