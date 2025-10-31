@@ -77,17 +77,7 @@ class LLaMoDM(LightningDataModule):
             is_eval=True,
         )
 
-        val_loader = DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=False,
-            drop_last=False,
-            persistent_workers=True,
-            collate_fn=collate_fn,
-        )
-        test_loader = DataLoader(
+        loader = DataLoader(
             self.test_dataset,
             batch_size=self.inference_batch_size,
             shuffle=False,
@@ -97,7 +87,7 @@ class LLaMoDM(LightningDataModule):
             persistent_workers=True,
             collate_fn=collate_fn,
         )
-        return [val_loader, test_loader]
+        return loader
     
     def test_dataloader(self):
         collate_fn = partial(
