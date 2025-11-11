@@ -484,12 +484,32 @@ class LLaMoForConditionalGeneration(GraphPreTrainedModel):
         input_embeds = torch.stack(text_chunk_embeds, dim=0)
         attention_mask = torch.stack(input_chunk_attns, dim=0)
 
+        num_beams = generate_kwargs.get('num_beams', 1)
         outputs = self.language_model.generate(
             inputs_embeds=input_embeds,
             attention_mask=attention_mask,
+            output_logits=True,
+            output_scores=True,
+            return_dict_in_generate=True,
             **generate_kwargs,
         )
+        batch_size, sequence_length = outputs.sequences.shape
+        vocab_size = outputs.logits[0].shape[-1]
+        # stack logtis
+        logits_stacked = torch.zeros(
+            batch_size,
+            0,
+            vocab_size,
+            device=outputs.logits[0].device,
+        )
+        for i in range(sequence_length):
+            logits = outputs.logits[i].unsqueeze(1)
+            logits = (
+                logits.view(batch_size, num_beams, -1).max(dim=1).values.unsqueeze(1)
+            )
+            logits_stacked = torch.cat([logits_stacked, logits], dim=1)
 
+        outputs.logits = logits_stacked
         return outputs
 
     def prepare_inputs_for_generation(
