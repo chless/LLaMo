@@ -261,9 +261,10 @@ class LLaMoStage(pl.LightningModule):
         smiles = batch['smiles']
         attention_mask = batch['attention_mask']
         label = batch['labels']
+        tasks = batch['task']
 
         ###============== Captioning Results ===================###
-        prediction_ids = self.mllm.generate(
+        outputs = self.mllm.generate(
             graph_values=graph_values,
             input_ids=input_ids,
             smiles=smiles,
@@ -274,6 +275,8 @@ class LLaMoStage(pl.LightningModule):
             min_length=self.min_len,
             length_penalty=self.length_penalty
         )
+
+        prediction_ids = outputs.sequences
 
         predictions = self.tokenizer.batch_decode(prediction_ids, skip_special_tokens=True)
         predictions = [pred.strip() for pred in predictions]
@@ -289,12 +292,17 @@ class LLaMoStage(pl.LightningModule):
         input_ids = batch['input_ids']
         input_ids = torch.where(input_ids < 0, 0, input_ids)
         input_texts = self.tokenizer.batch_decode(input_ids, skip_special_tokens=True)
+
+        binary_classificaiton_probs = convert_logit2binary_prob(outputs.logits, self.tokenizer, tasks)
+
         save_dict = {
-            'tasks': batch['task'],
+            'tasks': tasks,
             'input_texts': input_texts,
             'targets': texts,
             'predictions': predictions,
+            'binary_classificaiton_probs': binary_classificaiton_probs,
         }
+
         self.save_predictions(**save_dict)
 
 
@@ -356,4 +364,66 @@ class LLaMoStage(pl.LightningModule):
         
         return parent_parser
 
+def convert_logit2binary_prob(logits, tokenizer, tasks):
+    classification_classes = {
+    'bace',
+    'smol-property_prediction-bbbp',
+    'smol-property_prediction-clintox',
+    'smol-property_prediction-hiv',
+    'smol-property_prediction-sider',
+    }
+    classification_masks = []
+    for task in tasks:
+        if any(cls in task for cls in classification_classes):
+            classification_masks.append(True)
+        else:
+            classification_masks.append(False)
+    classification_masks = torch.tensor(classification_masks, dtype=torch.bool).unsqueeze(1)
+
+    # positive token id
+    positive_tokens = ["True", "true", "TRUE", "yes", "Yes", "YES"]
+    positive_token_ids = [tokenizer.encode(token)[1] for token in positive_tokens]
+    positive_token_ids = torch.tensor(positive_token_ids, dtype=torch.long)
+    # negative token id
+    negative_tokens = ["False", "false", "FALSE", "no", "No", "NO"]
+    negative_token_ids = [tokenizer.encode(token)[1] for token in negative_tokens]
+    negative_token_ids = torch.tensor(negative_token_ids, dtype=torch.long)
+
+    probs = logits.softmax(-1)
+
+    batch_size, sequence_length, vocab_size = probs.shape
+    false_logits = torch.zeros(batch_size, 1)
+    true_logits = torch.zeros(batch_size, 1)
+    target_logits_index = torch.zeros((batch_size), dtype=torch.long)
+
+    for i in range(batch_size):
+        # inspect that prediction includes positive or negative tokens
+        logits_i = logits[i, :, :]
+        prediction_ids_i = logits_i.argmax(-1)
+
+        if any(pos_id_i in prediction_ids_i for pos_id_i in positive_token_ids + negative_token_ids):
+            # only get the first occurrence in the prediction_ids_i of among positive token
+            for idx, pred_id_i in enumerate(prediction_ids_i):
+                if pred_id_i in positive_token_ids + negative_token_ids:
+                    target_logits_index[i] = idx
+                    break
+        else:
+            target_logits_index[i] = 0
+
+        false_logits[i] = probs[i, target_logits_index[i], negative_token_ids].sum()
+        true_logits[i] = probs[i, target_logits_index[i], positive_token_ids].sum()
+
+    total_probs = torch.cat(
+        [false_logits, true_logits], dim=-1
+    )
+    total_probs = total_probs.softmax(-1)
+
+    total_probs = torch.where(
+        classification_masks,
+        total_probs,
+        torch.full_like(total_probs, -1),
+    )
+
+    total_probs = [p.tolist() for p in total_probs]
+    return total_probs
 
