@@ -302,6 +302,11 @@ class LLaMoStage(pl.LightningModule):
             'predictions': predictions,
             'binary_classificaiton_probs': binary_classificaiton_probs,
         }
+        # save tokenizer
+        tokenizer_path = os.path.join(self.logger.log_dir)
+        self.tokenizer.save_pretrained(tokenizer_path)
+
+        loaded_tokenizer = transformers.LlamaTokenizer.from_pretrained(tokenizer_path)
 
         self.save_predictions(**save_dict)
 
