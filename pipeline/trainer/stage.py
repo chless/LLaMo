@@ -8,6 +8,7 @@ import json
 import torch.distributed as dist
 from peft import LoraConfig, TaskType
 from transformers import Adafactor
+import transformers
 
 from llamo.modeling_llamo import LLaMoForConditionalGeneration
 from llamo.tokenization_llamo import build_llamo_tokenizer
